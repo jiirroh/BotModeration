@@ -1,0 +1,49 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model GuildConfig {
+  guildId          String   @id
+  logChannelId     String?
+  quarantineRoleId String?
+  honeypotChannelId String? // Salon piège (kick instantané si message)
+  staffRoleId      String?  // Rôle à ping lors d'une quarantaine
+  bannedWords      String   @default("[]") // Stocké sous forme de JSON array en SQLite
+  antiNukeEnabled  Boolean  @default(false)
+  antiNukeBanThreshold Int     @default(3)
+  antiNukeChannelThreshold Int @default(3)
+  antiNukeAction   String   @default("REMOVE_ROLES") // REMOVE_ROLES, KICK, BAN
+}
+
+model Warn {
+  id          Int      @id @default(autoincrement())
+  userId      String
+  guildId     String
+  reason      String
+  moderatorId String
+  createdAt   DateTime @default(now())
+}
+
+model Quarantine {
+  id        Int      @id @default(autoincrement())
+  userId    String
+  guildId   String
+  reason    String
+  status    String   @default("PENDING") // PENDING, APPROVED, REJECTED
+  createdAt DateTime @default(now())
+}
+
+model Log {
+  id          Int      @id @default(autoincrement())
+  guildId     String
+  actionType  String   // WARN, BAN, KICK, AI_FILTER, REGEX_FILTER, QUARANTINE
+  targetId    String?
+  moderatorId String?
+  details     String   // Stocké sous forme de JSON string en SQLite
+  createdAt   DateTime @default(now())
+}
