@@ -1,4 +1,4 @@
-﻿import { Client, GatewayIntentBits, Collection } from 'discord.js';
+import { Client, GatewayIntentBits, Collection } from 'discord.js';
 import * as dotenv from 'dotenv';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -25,7 +25,7 @@ const commandFolders = fs.readdirSync(commandsPath);
 for (const folder of commandFolders) {
     const folderPath = path.join(commandsPath, folder);
     if (!fs.statSync(folderPath).isDirectory()) continue;
-    
+
     const commandFiles = fs.readdirSync(folderPath).filter(file => file.endsWith('.ts') || file.endsWith('.js'));
     for (const file of commandFiles) {
         const filePath = path.join(folderPath, file);
@@ -56,7 +56,7 @@ for (const file of eventFiles) {
 const port = process.env.PORT || 3000;
 const server = http.createServer((req, res) => {
     res.writeHead(200, { 'Content-Type': 'text/plain' });
-    res.end('Bot Discord en cours d''execution.');
+    res.end('Bot Discord en cours d\'execution.');
 });
 
 server.listen(port, () => {
