@@ -56,7 +56,7 @@ for (const file of eventFiles) {
 const port = process.env.PORT || 3000;
 const server = http.createServer((req, res) => {
     res.writeHead(200, { 'Content-Type': 'text/plain' });
-    res.end('Bot Discord en cours d''execution.');
+    res.end("Bot Discord en ligne.");
 });
 
 server.listen(port, () => {
