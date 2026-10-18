@@ -1,7 +1,8 @@
-import { Client, GatewayIntentBits, Collection } from 'discord.js';
+﻿import { Client, GatewayIntentBits, Collection } from 'discord.js';
 import * as dotenv from 'dotenv';
 import * as fs from 'fs';
 import * as path from 'path';
+import * as http from 'http';
 import { Command } from './types';
 
 dotenv.config();
@@ -51,6 +52,15 @@ for (const file of eventFiles) {
     }
 }
 
+// Healthcheck HTTP server for hosting platforms (Render, Koyeb, etc.)
+const port = process.env.PORT || 3000;
+const server = http.createServer((req, res) => {
+    res.writeHead(200, { 'Content-Type': 'text/plain' });
+    res.end('Bot Discord en cours d''execution.');
+});
+
+server.listen(port, () => {
+    console.log(`Serveur Healthcheck a l'ecoute sur le port ${port}`);
+});
+
 client.login(process.env.DISCORD_TOKEN);
- 
-// L'API a été retirée car les bots ne seront plus en local.
