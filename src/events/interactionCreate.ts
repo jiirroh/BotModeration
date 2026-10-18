@@ -1,4 +1,4 @@
-import { Events, Interaction } from 'discord.js';
+import { Events, Interaction, ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, PermissionFlagsBits } from 'discord.js';
 
 export default {
     name: Events.InteractionCreate,
@@ -67,6 +67,95 @@ export default {
                     await interaction.update({ embeds: [newEmbed], components: [] });
                 }
                 return;
+            }
+
+            // --- GESTION DU /SAY AVEC CORRECTION IA ET CONFIRMATION ---
+            if (customId.startsWith('say_')) {
+                if (!interaction.memberPermissions?.has(PermissionFlagsBits.Administrator)) {
+                    return interaction.reply({ content: "❌ Seuls les Administrateurs peuvent utiliser cette action.", ephemeral: true });
+                }
+
+                const { pendingSayMessages } = require('../commands/admin/say');
+                const pending = pendingSayMessages.get(interaction.user.id);
+
+                if (!pending) {
+                    return interaction.update({
+                        content: "⚠️ Aucun message en attente trouvé ou le délai a expiré. Veuillez retaper la commande `/say`.",
+                        embeds: [],
+                        components: []
+                    });
+                }
+
+                if (customId === 'say_cancel') {
+                    pendingSayMessages.delete(interaction.user.id);
+                    return interaction.update({
+                        content: "❌ Envoi du message annulé.",
+                        embeds: [],
+                        components: []
+                    });
+                }
+
+                if (customId === 'say_ai_fix') {
+                    await interaction.deferUpdate();
+                    const { correctSpellingWithAI } = require('../utils/aiCorrection');
+                    const correctedText = await correctSpellingWithAI(pending.text);
+                    pending.text = correctedText;
+                    pendingSayMessages.set(interaction.user.id, pending);
+
+                    const updatedEmbed = new EmbedBuilder()
+                        .setTitle("📢 Prévisualisation du message (Corrigé par l'IA ✨)")
+                        .setDescription(`Voici le texte après correction qui sera envoyé dans <#${pending.channelId}> :`)
+                        .addFields(
+                            { name: "Texte corrigé", value: correctedText },
+                            { name: "Texte original", value: pending.originalText }
+                        )
+                        .setColor("#2ECC71")
+                        .setFooter({ text: "Cliquez sur 'Confirmer et Envoyer' pour poster le message." });
+
+                    const row = new ActionRowBuilder<ButtonBuilder>()
+                        .addComponents(
+                            new ButtonBuilder()
+                                .setCustomId('say_confirm')
+                                .setLabel('✅ Confirmer et Envoyer')
+                                .setStyle(ButtonStyle.Success),
+                            new ButtonBuilder()
+                                .setCustomId('say_cancel')
+                                .setLabel('❌ Annuler')
+                                .setStyle(ButtonStyle.Secondary)
+                        );
+
+                    return interaction.editReply({
+                        embeds: [updatedEmbed],
+                        components: [row]
+                    });
+                }
+
+                if (customId === 'say_confirm') {
+                    const targetChannel = await interaction.guild?.channels.fetch(pending.channelId).catch(() => null);
+                    if (!targetChannel || !targetChannel.isTextBased()) {
+                        return interaction.update({
+                            content: "❌ Le salon de destination est introuvable ou invalide.",
+                            embeds: [],
+                            components: []
+                        });
+                    }
+
+                    try {
+                        await targetChannel.send({ content: pending.text });
+                        pendingSayMessages.delete(interaction.user.id);
+                        return interaction.update({
+                            content: `✅ Le message a été publié avec succès dans <#${pending.channelId}> !`,
+                            embeds: [],
+                            components: []
+                        });
+                    } catch (e) {
+                        return interaction.update({
+                            content: "❌ Une erreur est survenue lors de l'envoi du message dans le salon.",
+                            embeds: [],
+                            components: []
+                        });
+                    }
+                }
             }
         }
         // -------------------------------------------
