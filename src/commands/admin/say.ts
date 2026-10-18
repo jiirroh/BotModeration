@@ -1,10 +1,25 @@
-import { SlashCommandBuilder, ChatInputCommandInteraction, PermissionFlagsBits, ChannelType, TextChannel, NewsChannel } from 'discord.js';
+import { 
+    SlashCommandBuilder, 
+    ChatInputCommandInteraction, 
+    PermissionFlagsBits, 
+    ChannelType, 
+    TextChannel, 
+    NewsChannel, 
+    ActionRowBuilder, 
+    ButtonBuilder, 
+    ButtonStyle, 
+    EmbedBuilder 
+} from 'discord.js';
 import { Command } from '../../types';
+
+// Map en mémoire pour stocker les messages en attente de confirmation
+// Clé: userId, Valeur: { channelId: string, text: string, originalText: string }
+export const pendingSayMessages = new Map<string, { channelId: string; text: string; originalText: string }>();
 
 const sayCommand: Command = {
     data: new SlashCommandBuilder()
         .setName('say')
-        .setDescription("📢 Envoie un message dans le salon de votre choix avec le bot (Réservé aux Administrateurs).")
+        .setDescription("📢 Prépare un message pour le salon de votre choix avec correction IA (Réservé aux Admins).")
         .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
         .addChannelOption(option => 
             option.setName('salon')
@@ -30,7 +45,6 @@ const sayCommand: Command = {
         const channelOption = interaction.options.getChannel('salon', true);
         const textToSend = interaction.options.getString('message', true);
 
-        // Fetch channel directly to guarantee GuildText or GuildAnnouncement channel instance
         const targetChannel = await interaction.guild?.channels.fetch(channelOption.id).catch(() => null);
 
         if (!targetChannel || (!targetChannel.isTextBased() || !(targetChannel instanceof TextChannel || targetChannel instanceof NewsChannel))) {
@@ -41,19 +55,43 @@ const sayCommand: Command = {
             return;
         }
 
-        try {
-            await targetChannel.send({ content: textToSend });
-            await interaction.reply({
-                content: `✅ Message envoyé avec succès dans <#${targetChannel.id}> !`,
-                ephemeral: true
-            });
-        } catch (error) {
-            console.error("Erreur lors de l'envoi du message via /say:", error);
-            await interaction.reply({
-                content: "❌ Impossible d'envoyer le message dans ce salon. Vérifiez que le bot a bien la permission d'écrire dedans.",
-                ephemeral: true
-            });
-        }
+        // Sauvegarde en attente de validation
+        pendingSayMessages.set(interaction.user.id, {
+            channelId: targetChannel.id,
+            text: textToSend,
+            originalText: textToSend
+        });
+
+        const embed = new EmbedBuilder()
+            .setTitle("📢 Prévisualisation du message")
+            .setDescription(`Voici l'aperçu du message qui sera envoyé dans <#${targetChannel.id}> :`)
+            .addFields(
+                { name: "Texte actuel", value: textToSend }
+            )
+            .setColor("#5865F2")
+            .setFooter({ text: "Cliquez sur 'Corriger avec l'IA' pour corriger les fautes ou 'Confirmer' pour envoyer." });
+
+        const row = new ActionRowBuilder<ButtonBuilder>()
+            .addComponents(
+                new ButtonBuilder()
+                    .setCustomId('say_confirm')
+                    .setLabel('✅ Confirmer et Envoyer')
+                    .setStyle(ButtonStyle.Success),
+                new ButtonBuilder()
+                    .setCustomId('say_ai_fix')
+                    .setLabel("✨ Corriger avec l'IA")
+                    .setStyle(ButtonStyle.Primary),
+                new ButtonBuilder()
+                    .setCustomId('say_cancel')
+                    .setLabel('❌ Annuler')
+                    .setStyle(ButtonStyle.Secondary)
+            );
+
+        await interaction.reply({
+            embeds: [embed],
+            components: [row],
+            ephemeral: true
+        });
     },
 };
 
