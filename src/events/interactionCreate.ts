@@ -1,4 +1,4 @@
-import { Events, Interaction } from 'discord.js';
+import { Events, Interaction, ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, PermissionFlagsBits } from 'discord.js';
 
 export default {
     name: Events.InteractionCreate,
@@ -71,7 +71,6 @@ export default {
 
             // --- GESTION DU /SAY AVEC CORRECTION IA ET CONFIRMATION ---
             if (customId.startsWith('say_')) {
-                const { PermissionFlagsBits, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
                 if (!interaction.memberPermissions?.has(PermissionFlagsBits.Administrator)) {
                     return interaction.reply({ content: "❌ Seuls les Administrateurs peuvent utiliser cette action.", ephemeral: true });
                 }
